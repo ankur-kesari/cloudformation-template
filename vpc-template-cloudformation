@@ -1,32 +1,59 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: This is cloudformation template to creates vpc with public and private subnets
 
+##METADATA
+Metadata: 
+  AWS::CloudFormation::Interface: 
+    ParameterGroups: 
+      - 
+        Label: 
+          default: "Network Configuration"
+        Parameters: 
+          - VpcCidr
+          - PublicSubnet1Cidr
+          - PublicSubnet2Cidr
+          - PrivateSubnet1Cidr
+          - PrivateSubnet2Cidr
+      
+    ParameterLabels: 
+      VpcCidr: 
+        default: "Which VPC should this be deployed to?"
+      PublicSubnet1Cidr: 
+        default: "Which PublicSubnet1Cidr should this be deployed to?"  
+      PublicSubnet2Cidr: 
+        default: "Which PublicSubnet2Cidr should this be deployed to?" 
+      PrivateSubnet1Cidr: 
+        default: "Which PrivateSubnet1Cidr should this be deployed to?" 
+      PrivateSubnet2Cidr: 
+        default: "Which PrivateSubnet2Cidr should this be deployed to?"   
+
+
 ##PARAMETER
 Parameters:
   VpcCidr:
-    Description: Ip range or CIDR block 
+    Description: Enter Ip range or CIDR block 
     Type: String 
     Default: 10.0.0.0/16       
 
   PublicSubnet1Cidr:
-    Description: Ip range or CIDR block 
+    Description: Enter Ip range or CIDR block 
     Type: String 
     Default: 10.0.0.0/24
 
   PublicSubnet2Cidr:
-    Description: Ip range or CIDR block 
+    Description: Enter Ip range or CIDR block 
     Type: String 
     Default: 10.0.1.0/24  
 
   PrivateSubnet1Cidr:
-    Description: Ip range or CIDR block 
+    Description: Enter Ip range or CIDR block 
     Type: String 
-    Default: 10.0.3.0/24
+    Default: 10.0.2.0/24
 
   PrivateSubnet2Cidr:
-    Description: Ip range or CIDR block 
+    Description: Enter Ip range or CIDR block 
     Type: String 
-    Default: 10.0.4.0/24   
+    Default: 10.0.3.0/24   
 
 Resources:
 
@@ -183,6 +210,8 @@ Resources:
          
 
 
+   
+  
 
 
 
@@ -204,6 +233,114 @@ Resources:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+                      
+        
 
 
 
