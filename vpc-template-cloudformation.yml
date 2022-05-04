@@ -61,7 +61,7 @@ Resources:
   Vpc:      
    Type: AWS::EC2::VPC
    Properties:
-     CidrBlock: !Ref VpcCidr
+     CidrBlock: !Ref VpcCidr 
      EnableDnsSupport: true
      EnableDnsHostnames: true
      Tags:
@@ -88,7 +88,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: !Ref PublicSubnet1Cidr
+      CidrBlock: !Ref PublicSubnet1Cidr                 
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -100,7 +100,7 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: !Ref PublicSubnet2Cidr
+      CidrBlock: !Ref PublicSubnet2Cidr               
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
@@ -142,9 +142,9 @@ Resources:
   PrivateSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
-      CidrBlock: !Ref PrivateSubnet1Cidr
-      MapPublicIpOnLaunch: false
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]  
+      CidrBlock: !Ref PrivateSubnet1Cidr                #default value of
+      MapPublicIpOnLaunch: false                        #MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
@@ -154,8 +154,8 @@ Resources:
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: !Ref PrivateSubnet2Cidr 
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]        #default value of
+      CidrBlock: !Ref PrivateSubnet2Cidr                 #MapPublicIpOnLaunch: false
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -206,124 +206,38 @@ Resources:
     Properties:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
-    
-         
 
+Outputs:
+  VPC:
+    Description: A reference to the created VPC
+    Value: !Ref Vpc  
 
+  publicsubnet1:
+    Description: A refernence to private subnet 1
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: PublicSubnet-1
+
+  publicsubnet2:
+    Description: A refernence to private subnet 2
+    Value: !Ref PublicSubnet2
+    Export:
+      Name: PublicSubnet-2
+   
+
+  privatesubnet1:
+    Description: A refernence to private subnet 1
+    Value: !Ref PrivateSubnet1
+    Export:
+      Name: PrivateSubnet-1
+
+  privatesubnet2:
+    Description: A refernence to private subnet 2
+    Value: !Ref PrivateSubnet2
+    Export:
+      Name: PrivateSubnet-2
    
   
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
      
 
 
@@ -331,125 +245,4 @@ Resources:
 
 
 
-
-
-
-
-
-
-
-  
-                      
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-     
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-                      
-        
-
-
-
-
+         
