@@ -115,8 +115,8 @@ Resources:
     Properties:
       AvailabilityZone: !Select [ 0, !GetAZs  '' ]
       CidrBlock: !Select [ 2, !Cidr [!GetAtt Vpc.CidrBlock, 4, 8 ]]         
-      MapPublicIpOnLaunch: false
-      Tags:
+      MapPublicIpOnLaunch: false                                # Default value of
+      Tags:                                                     #MapPublicIpOnLaunch: false
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet1
       VpcId: !Ref Vpc 
@@ -127,8 +127,8 @@ Resources:
     Properties:
       AvailabilityZone: !Select [ 1, !GetAZs '' ]
       CidrBlock: !Select [ 3, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]       
-      MapPublicIpOnLaunch: false
-      Tags:
+      MapPublicIpOnLaunch: false                                  #defalt value of    
+      Tags:                                                       #MapPublicIpOnLaunch: false       
         - Key: Name
           Value: !Sub ${AWS::StackName}-PrivateSubnet2
       VpcId: !Ref Vpc
@@ -178,11 +178,66 @@ Resources:
       SubnetId: !Ref PrivateSubnet2
       RouteTableId: !Ref PrivateRouteTable
 
+#Instance Creation
+
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow port 3306
+      GroupName: myrdssg
+      VpcId: !ImportValue MyVpc 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "3306"
+          ToPort: "3306"
+          SourceSecurityGroupId: !Ref InstanceSecurityGroup      #Giving specific sg access to databade
+                 
+
+  InstanceSecurityGroup: 
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ssh and http and mysql to client host
+      GroupName: mysg
+      VpcId: !Ref Vpc 
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: "22"
+          ToPort: "22"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: tcp
+          FromPort: "80"
+          ToPort: "80"
+          CidrIp: "0.0.0.0/0" 
+        - IpProtocol: tcp
+          FromPort: "3306"
+          ToPort: "3306"
+          CidrIp: "0.0.0.0/0" 
+        # SourceSecurityGroupId: !Ref DatabaseSecurityGroup (give circular loop error)
+
+
+  KeyPair:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: mykey                           
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties: 
+      ImageId: ami-05ba3a39a75be1ec4
+      KeyName: !Ref KeyPair
+      InstanceType: t3a.small
+      SecurityGroupIds:
+            - !GetAtt InstanceSecurityGroup.GroupId           
+      SubnetId: !Ref PublicSubnet1
+ 
 
 Outputs:
   VPC:
     Description: A reference to the created VPC
-    Value: !Ref Vpc  
+    Value: !Ref Vpc
+    Export:
+      Name: MyVpc 
+
 
   publicsubnet1:
     Description: A refernence to private subnet 1
@@ -208,10 +263,19 @@ Outputs:
     Value: !Ref PrivateSubnet2
     Export:
       Name: PrivateSubnet-2
-   
+
+  rdssg:
+    Description: A refernence to rds sg 
+    Value: !Ref DatabaseSecurityGroup
+    Export:
+      Name: rdssg 
+      
 
 
 
+
+
+         
 
 
          
