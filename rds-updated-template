@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: This template creates an RDS database with MYSQL  
+
+Metadata:
+  AWS::CloudFormation::Interface: 
+    ParameterGroups:
+    
+      - 
+        Label: 
+          default: Database Parameters
+        Parameters:
+          - DatabaseInstanceIdentifier
+          - DatabaseName
+          - DatabaseUser
+          - DatabasePassword
+          - DatabaseBackupRetentionPeriod
+          - DatabaseAllocatedStorage
+          - DatabaseInstanceClass
+          - MultiAZDatabase
+
+Parameters:
+  
+  DatabaseInstanceIdentifier:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
+    Default: mydb
+    Description: Instance identifier name
+    MaxLength: 60
+    MinLength: 1
+    Type: String
+
+  DatabaseName:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
+    Default: wordpress
+    Description: MySQL database name
+    MaxLength: 64
+    MinLength: 1
+    Type: String
+
+  DatabaseUser:
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ConstraintDescription: Must begin with a letter and contain only alphanumeric characters
+    Default: admin
+    Description: Username for MySQL database access
+    MaxLength: 16
+    MinLength: 1
+    NoEcho: true
+    Type: String
+
+  DatabasePassword:
+    AllowedPattern: '[a-zA-Z0-9]*'
+    ConstraintDescription: Must contain only alphanumeric characters
+    Default: 12345678
+    Description: Password for MySQL database access
+    MaxLength: 41
+    MinLength: 8
+    NoEcho: true
+    Type: String
+
+  DatabaseBackupRetentionPeriod:
+    ConstraintDescription: Database backup retention period must be between 0 and 35 days
+    Default: 7
+    Description: The number of days for which automatic DB snapshots are retained
+    MaxValue: 35
+    MinValue: 0
+    Type: Number
+
+  DatabaseAllocatedStorage:
+    ConstraintDescription: Must be between 5 and 1024Gb
+    Default: 20
+    Description: The size of the database (Gb)
+    MaxValue: 65536
+    MinValue: 5
+    Type: Number
+
+  DatabaseInstanceClass:
+    AllowedValues:
+      - db.t3.micro
+      - db.t3.small
+      - db.m6.large
+    ConstraintDescription: Must select a valid database instance type
+    Default: db.t3.micro 
+    Description: For MultiAZ choose db.m6.large
+    Type: String
+
+  MultiAZDatabase:
+    AllowedValues:
+      - true
+      - false
+    ConstraintDescription: Must be either true or false
+    Default: false
+    Description: Creates a Multi-AZ MySQL Amazon RDS database instance
+    Type: String
+
+
+
+Resources:  
+
+  DatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS database
+      SubnetIds: 
+        - Fn::ImportValue: PrivateSubnet-1
+        - Fn::ImportValue: PrivateSubnet-2
+      Tags:
+        - Key: Name
+          Value: database subnets
+                 
+
+  DatabaseInstance:
+    Type: AWS::RDS::DBInstance 
+    Properties:
+      AllocatedStorage: !Ref DatabaseAllocatedStorage
+      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      BackupRetentionPeriod: !Ref DatabaseBackupRetentionPeriod
+      DBInstanceClass: !Ref DatabaseInstanceClass
+      DBInstanceIdentifier: !Ref DatabaseInstanceIdentifier
+      DBName: !Ref DatabaseName
+      DBSubnetGroupName: !Ref DatabaseSubnetGroup
+      Engine: MySQL
+      EngineVersion: 8.0.27
+      MasterUsername: !Ref DatabaseUser
+      MasterUserPassword: !Ref DatabasePassword
+      MultiAZ: !Ref MultiAZDatabase
+      VPCSecurityGroups: 
+            - Fn::ImportValue: rdssg
+
+Outputs:
+  RDSHost:
+    Description: The URL of the RDS
+    Value: !GetAtt [DatabaseInstance, Endpoint.Address]
+    Export:
+      Name: DB-HOST
+
+  RDSName:
+    Description: The URL of the RDS
+    Value: !Ref DatabaseName
+    Export:
+      Name: DB-NAME
+
+  RDSUser:
+    Description: The URL of the RDS
+    Value: !Ref DatabaseUser 
+    Export:
+      Name: DB-USER
+
+  RDSPasswd:
+    Description: The URL of the RDS
+    Value: !Ref DatabasePassword
+    Export:
+      Name: DB-PASSWD             
+
