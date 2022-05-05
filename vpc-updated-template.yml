@@ -1,281 +1,273 @@
-AWSTemplateFormatVersion: "2010-09-09"
-Description: This is cloudformation template to creates vpc with public and private subnets
+  AWSTemplateFormatVersion: "2010-09-09"
+  Description: This is cloudformation template to creates vpc with public and private subnets
 
-##METADATA
-Metadata: 
-  AWS::CloudFormation::Interface: 
-    ParameterGroups: 
-      - 
-        Label: 
-          default: "Network Configuration"
-        Parameters: 
-          - VpcCidr
-               
-    ParameterLabels: 
-      VpcCidr: 
-        default: "Which VPC should this be deployed to?"
+  ##METADATA
+  Metadata: 
+    AWS::CloudFormation::Interface: 
+      ParameterGroups: 
+        - 
+          Label: 
+            default: "Network Configuration"
+          Parameters: 
+            - VpcCidr
+                
+      ParameterLabels: 
+        VpcCidr: 
+          default: "Which VPC should this be deployed to?"
+        
+
+
+  ##PARAMETER
+  Parameters:
+    VpcCidr:
+      Description: Enter Ip range or CIDR block 
+      Type: String 
+      Default: 10.0.0.0/16       
+
       
 
+  Resources:
 
-##PARAMETER
-Parameters:
-  VpcCidr:
-    Description: Enter Ip range or CIDR block 
-    Type: String 
-    Default: 10.0.0.0/16       
+    #CREATION Of VPC  
+    Vpc:      
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-myvpc
 
+  #CREATION Of IGW
+    InternetGateway:          
+      Type: AWS::EC2::InternetGateway
+      Properties:
+          Tags:
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-IGW 
+
+  #Attachment of IGW to VPC
+    InternetGatewayAttachment:   
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+        InternetGatewayId: !Ref InternetGateway 
+        VpcId: !Ref Vpc
+
+    # Create Public Subnet1
+    PublicSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone: !Select [ 0, !GetAZs '' ]
+        CidrBlock: !Select [ 0, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]  
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-PublicSubnet1
+        VpcId: !Ref Vpc 
+
+  # Create Public Subnet2
+    PublicSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone: !Select [ 1, !GetAZs '' ]
+        CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]                 
+        MapPublicIpOnLaunch: true
+        Tags:
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-PublicSubnet2
+        VpcId: !Ref Vpc 
+
+  # Create Route Table
+    PublicRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        Tags:
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-Public-route-table
+        VpcId: !Ref Vpc 
+
+  # Add a Public Route to the Route Table
+    PublicRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref InternetGateway
+        RouteTableId: !Ref PublicRouteTable
+
+  # Associate Public Subnet1 with Public Route Table
+    PublicSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        SubnetId: !Ref PublicSubnet1
+
+  # Associate Public Subnet2 with Public Route Table
+    PublicSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        SubnetId: !Ref PublicSubnet2
+
+  # Create Private Subnet1
+    PrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+        CidrBlock: !Select [ 2, !Cidr [!GetAtt Vpc.CidrBlock, 4, 8 ]]         
+        MapPublicIpOnLaunch: false                                # Default value of
+        Tags:                                                     #MapPublicIpOnLaunch: false
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-PrivateSubnet1
+        VpcId: !Ref Vpc 
+
+  # Create Private Subnet2
+    PrivateSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        AvailabilityZone: !Select [ 1, !GetAZs '' ]
+        CidrBlock: !Select [ 3, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]       
+        MapPublicIpOnLaunch: false                                  #defalt value of    
+        Tags:                                                       #MapPublicIpOnLaunch: false       
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-PrivateSubnet2
+        VpcId: !Ref Vpc
+
+
+    ## NAT GATEWAY 
+    NatGateway:
+      Type: AWS::EC2::NatGateway
+      DependsOn: NatPublicIP
+      Properties: 
+        SubnetId: !Ref PublicSubnet1
+        AllocationId: !GetAtt NatPublicIP.AllocationId    
+
+  ## ELASTIC IP
+    NatPublicIP:
+      Type: AWS::EC2::EIP
+      DependsOn: Vpc 
+      Properties:
+        Domain: vpc
+      
+  ## PRIVATE ROUTE TABLE
+    PrivateRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref Vpc 
+        Tags:
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-Private-route-table
+  ##PRIVATE ROUTE    
+    PrivateRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        NatGatewayId: !Ref NatGateway
+        RouteTableId: !Ref PrivateRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+
+  ##PRIVATE SUBNET ASSOCIATION  
+    PrivateSubnet1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PrivateSubnet1
+        RouteTableId: !Ref PrivateRouteTable
+      
+    PrivateSubnet2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        SubnetId: !Ref PrivateSubnet2
+        RouteTableId: !Ref PrivateRouteTable
+
+  #Instance Creation
+
+    DatabaseSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Allow port 3306
+        GroupName: myrdssg
+        VpcId: !Ref Vpc 
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: "3306"
+            ToPort: "3306"
+            SourceSecurityGroupId: !Ref InstanceSecurityGroup      #Giving specific sg access to databade
+                  
+
+    InstanceSecurityGroup: 
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Allow ssh and http and mysql to client host
+        GroupName: mysg
+        VpcId: !Ref Vpc 
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: "22"
+            ToPort: "22"
+            CidrIp: "0.0.0.0/0"
+          - IpProtocol: tcp
+            FromPort: "80"
+            ToPort: "80"
+            CidrIp: "0.0.0.0/0"
+          - IpProtocol: tcp
+            FromPort: "3306"
+            ToPort: "3306"
+            CidrIp: "0.0.0.0/0" 
+            
+          
+
+    KeyPair:
+      Type: AWS::EC2::KeyPair
+      Properties:
+        KeyName: mykey                           
+
+    MyEC2Instance:
+      Type: AWS::EC2::Instance
+      Properties: 
+        ImageId: ami-05ba3a39a75be1ec4
+        KeyName: !Ref KeyPair
+        InstanceType: t3a.small
+        SecurityGroupIds:
+              - !GetAtt InstanceSecurityGroup.GroupId           
+        SubnetId: !Ref PublicSubnet1
+  
+
+  Outputs:
+    VPC:
+      Description: A reference to the created VPC
+      Value: !Ref Vpc
+      Export:
+        Name: MyVpc 
+
+
+    publicsubnet1:
+      Description: A refernence to private subnet 1
+      Value: !Ref PublicSubnet1
+      Export:
+        Name: PublicSubnet-1
+
+    publicsubnet2:
+      Description: A refernence to private subnet 2
+      Value: !Ref PublicSubnet2
+      Export:
+        Name: PublicSubnet-2
     
 
-Resources:
+    privatesubnet1:
+      Description: A refernence to private subnet 1
+      Value: !Ref PrivateSubnet1
+      Export:
+        Name: PrivateSubnet-1
 
-  #CREATION Of VPC  
-  Vpc:      
-   Type: AWS::EC2::VPC
-   Properties:
-     CidrBlock: !Ref VpcCidr
-     EnableDnsSupport: true
-     EnableDnsHostnames: true
-     Tags:
-      - Key: Name
-        Value: !Sub ${AWS::StackName}-myvpc
+    privatesubnet2:
+      Description: A refernence to private subnet 2
+      Value: !Ref PrivateSubnet2
+      Export:
+        Name: PrivateSubnet-2
 
-#CREATION Of IGW
-  InternetGateway:          
-    Type: AWS::EC2::InternetGateway
-    Properties:
-        Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-IGW 
+    rdssg:
+      Description: A refernence to rds sg 
+      Value: !Ref DatabaseSecurityGroup
+      Export:
+        Name: rdssg 
+        
 
-#Attachment of IGW to VPC
-  InternetGatewayAttachment:   
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      InternetGatewayId: !Ref InternetGateway 
-      VpcId: !Ref Vpc
-
-  # Create Public Subnet1
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: !Select [ 0, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]  
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet1
-      VpcId: !Ref Vpc 
-
-# Create Public Subnet2
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: !Select [ 1, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]                 
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PublicSubnet2
-      VpcId: !Ref Vpc 
-
-# Create Route Table
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-Public-route-table
-      VpcId: !Ref Vpc 
-
-# Add a Public Route to the Route Table
-  PublicRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-      RouteTableId: !Ref PublicRouteTable
-
-# Associate Public Subnet1 with Public Route Table
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet1
-
-# Associate Public Subnet2 with Public Route Table
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      SubnetId: !Ref PublicSubnet2
-
-# Create Private Subnet1
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
-      CidrBlock: !Select [ 2, !Cidr [!GetAtt Vpc.CidrBlock, 4, 8 ]]         
-      MapPublicIpOnLaunch: false                                # Default value of
-      Tags:                                                     #MapPublicIpOnLaunch: false
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet1
-      VpcId: !Ref Vpc 
-
-# Create Private Subnet2
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: !Select [ 3, !Cidr [ !GetAtt Vpc.CidrBlock, 4, 8 ]]       
-      MapPublicIpOnLaunch: false                                  #defalt value of    
-      Tags:                                                       #MapPublicIpOnLaunch: false       
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-PrivateSubnet2
-      VpcId: !Ref Vpc
-
-
-  ## NAT GATEWAY 
-  NatGateway:
-    Type: AWS::EC2::NatGateway
-    DependsOn: NatPublicIP
-    Properties: 
-      SubnetId: !Ref PublicSubnet1
-      AllocationId: !GetAtt NatPublicIP.AllocationId    
-
- ## ELASTIC IP
-  NatPublicIP:
-    Type: AWS::EC2::EIP
-    DependsOn: Vpc 
-    Properties:
-      Domain: vpc
-     
- ## PRIVATE ROUTE TABLE
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref Vpc 
-      Tags:
-        - Key: Name
-          Value: !Sub ${AWS::StackName}-Private-route-table
-##PRIVATE ROUTE    
-  PrivateRoute:
-    Type: AWS::EC2::Route
-    Properties:
-      NatGatewayId: !Ref NatGateway
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-
-##PRIVATE SUBNET ASSOCIATION  
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
-     
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-
-#Instance Creation
-
-  DatabaseSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow port 3306
-      GroupName: myrdssg
-      VpcId: !ImportValue MyVpc 
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: "3306"
-          ToPort: "3306"
-          SourceSecurityGroupId: !Ref InstanceSecurityGroup      #Giving specific sg access to databade
-                 
-
-  InstanceSecurityGroup: 
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow ssh and http and mysql to client host
-      GroupName: mysg
-      VpcId: !Ref Vpc 
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: "22"
-          ToPort: "22"
-          CidrIp: "0.0.0.0/0"
-        - IpProtocol: tcp
-          FromPort: "80"
-          ToPort: "80"
-          CidrIp: "0.0.0.0/0" 
-        - IpProtocol: tcp
-          FromPort: "3306"
-          ToPort: "3306"
-          CidrIp: "0.0.0.0/0" 
-        # SourceSecurityGroupId: !Ref DatabaseSecurityGroup (give circular loop error)
-
-
-  KeyPair:
-    Type: AWS::EC2::KeyPair
-    Properties:
-      KeyName: mykey                           
-
-  MyEC2Instance:
-    Type: AWS::EC2::Instance
-    Properties: 
-      ImageId: ami-05ba3a39a75be1ec4
-      KeyName: !Ref KeyPair
-      InstanceType: t3a.small
-      SecurityGroupIds:
-            - !GetAtt InstanceSecurityGroup.GroupId           
-      SubnetId: !Ref PublicSubnet1
- 
-
-Outputs:
-  VPC:
-    Description: A reference to the created VPC
-    Value: !Ref Vpc
-    Export:
-      Name: MyVpc 
-
-
-  publicsubnet1:
-    Description: A refernence to private subnet 1
-    Value: !Ref PublicSubnet1
-    Export:
-      Name: PublicSubnet-1
-
-  publicsubnet2:
-    Description: A refernence to private subnet 2
-    Value: !Ref PublicSubnet2
-    Export:
-      Name: PublicSubnet-2
-   
-
-  privatesubnet1:
-    Description: A refernence to private subnet 1
-    Value: !Ref PrivateSubnet1
-    Export:
-      Name: PrivateSubnet-1
-
-  privatesubnet2:
-    Description: A refernence to private subnet 2
-    Value: !Ref PrivateSubnet2
-    Export:
-      Name: PrivateSubnet-2
-
-  rdssg:
-    Description: A refernence to rds sg 
-    Value: !Ref DatabaseSecurityGroup
-    Export:
-      Name: rdssg 
-      
-
-
-
-
-
-         
-
-
-         
